@@ -1,0 +1,757 @@
+////////////////////////////////////////////////////////////
+///	INCLUDES
+////////////////////////////////////////////////////////////
+#include <Python.h>
+#include <numpy/arrayobject.h>
+#include "../deeplearning/NeuralNetwork.hpp"
+#include "../deeplearning/OptimizerSDG.hpp"
+#include "../RL/DQN.hpp"
+#include "../util/ensure.hpp"
+
+//Neural network
+static PyObject *ailib_neuralnetwork_init(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_init_fromfile(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_save(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_load(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_free(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_clear(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_variable(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_linear(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_convolution(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_maxpooling(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_averagepooling(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_dropout(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_sigmoid(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_relu(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_tanh(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_selu(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_softmax(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_normalization(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_push_recurrent(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_run(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_optimize(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_getoutput(PyObject *self, PyObject* args);
+static PyObject *ailib_neuralnetwork_printstack(PyObject *self, PyObject* args);
+
+//Optimizers
+static PyObject *ailib_optimizer_sdg_init(PyObject *self, PyObject* args);
+static PyObject *ailib_optimizer_sdg_set_learningrate(PyObject *self, PyObject* args);
+static PyObject *ailib_optimizer_sdg_set_momentum(PyObject *self, PyObject* args);
+static PyObject *ailib_optimizer_sdg_free(PyObject *self, PyObject* args);
+
+//Intelligent agent
+static PyObject* ailib_dqn_init(PyObject* self, PyObject* args);
+static PyObject* ailib_dqn_act(PyObject* self, PyObject* args);
+static PyObject* ailib_dqn_act_restricted(PyObject* self, PyObject* args);
+static PyObject* ailib_dqn_teach(PyObject* self, PyObject* args);
+static PyObject* ailib_dqn_observe(PyObject* self, PyObject* args);
+static PyObject* ailib_dqn_set_curiosity(PyObject* self, PyObject* args);
+static PyObject* ailib_dqn_set_longtermexploitation(PyObject* self, PyObject* args);
+static PyObject* ailib_dqn_set_learningrate(PyObject* self, PyObject* args);
+static PyObject* ailib_dqn_free(PyObject* self, PyObject* args);
+
+static PyMethodDef module_methods[] = {
+
+	//Neural network
+	{"neuralnetwork_init", ailib_neuralnetwork_init, METH_NOARGS, NULL},
+	{"neuralnetwork_init_fromfile", ailib_neuralnetwork_init_fromfile, METH_VARARGS, NULL},
+	{"neuralnetwork_save", ailib_neuralnetwork_save, METH_VARARGS, NULL},
+	{"neuralnetwork_load", ailib_neuralnetwork_load, METH_VARARGS, NULL},
+	{"neuralnetwork_free", ailib_neuralnetwork_free, METH_VARARGS, NULL},
+	{"neuralnetwork_clear", ailib_neuralnetwork_clear, METH_VARARGS, NULL},
+	{"neuralnetwork_printstack", ailib_neuralnetwork_printstack, METH_VARARGS, NULL},
+	{"neuralnetwork_push_variable", ailib_neuralnetwork_push_variable, METH_VARARGS, NULL},
+	{"neuralnetwork_push_linear", ailib_neuralnetwork_push_linear, METH_VARARGS, NULL},
+	{"neuralnetwork_push_convolution", ailib_neuralnetwork_push_convolution, METH_VARARGS, NULL},
+	{"neuralnetwork_push_maxpooling", ailib_neuralnetwork_push_maxpooling, METH_VARARGS, NULL},
+	{"neuralnetwork_push_averagepooling", ailib_neuralnetwork_push_averagepooling, METH_VARARGS, NULL},
+	{"neuralnetwork_push_dropout", ailib_neuralnetwork_push_dropout, METH_VARARGS, NULL},
+	{"neuralnetwork_push_sigmoid", ailib_neuralnetwork_push_sigmoid, METH_VARARGS, NULL},
+	{"neuralnetwork_push_relu", ailib_neuralnetwork_push_relu, METH_VARARGS, NULL},
+	{"neuralnetwork_push_tanh", ailib_neuralnetwork_push_tanh, METH_VARARGS, NULL},
+	{"neuralnetwork_push_selu", ailib_neuralnetwork_push_selu, METH_VARARGS, NULL},
+	{"neuralnetwork_push_softmax", ailib_neuralnetwork_push_softmax, METH_VARARGS, NULL},
+	{"neuralnetwork_push_normalization", ailib_neuralnetwork_push_normalization, METH_VARARGS, NULL},
+	{"neuralnetwork_push_recurrent", ailib_neuralnetwork_push_recurrent, METH_VARARGS, NULL},
+	{"neuralnetwork_run", ailib_neuralnetwork_run, METH_VARARGS, NULL},
+	{"neuralnetwork_optimize", ailib_neuralnetwork_optimize, METH_VARARGS, NULL},
+	{"neuralnetwork_getoutput", ailib_neuralnetwork_getoutput, METH_VARARGS, NULL},
+	
+	//Optimizers
+	{"optimizer_sdg_init", ailib_optimizer_sdg_init, METH_VARARGS, NULL},
+	{"optimizer_sdg_free", ailib_optimizer_sdg_free, METH_VARARGS, NULL},
+	{"optimizer_sdg_set_learningrate", ailib_optimizer_sdg_set_learningrate, METH_VARARGS, NULL},
+	{"optimizer_sdg_set_momemtum", ailib_optimizer_sdg_set_momentum, METH_VARARGS, NULL},
+	
+	//DQN intelligent agent
+	{"dqn_init", ailib_dqn_init, METH_VARARGS, NULL},
+	{"dqn_free", ailib_dqn_free, METH_VARARGS, NULL},
+	{"dqn_act",	 ailib_dqn_act, METH_VARARGS, NULL},
+	{"dqn_act_restricted", ailib_dqn_act_restricted, METH_VARARGS, NULL},
+	{"dqn_teach", ailib_dqn_act_restricted, METH_VARARGS, NULL},
+	{"dqn_observe", ailib_dqn_observe, METH_VARARGS, NULL},
+	{"dqn_set_curiosity", ailib_dqn_set_curiosity, METH_VARARGS, NULL},
+	{"dqn_set_longtermexploitation", ailib_dqn_set_longtermexploitation, METH_VARARGS, NULL},
+	{"dqn_set_learningrate", ailib_dqn_set_learningrate, METH_VARARGS, NULL},
+
+	{NULL, NULL, 0, NULL}
+};
+
+PyMODINIT_FUNC init_ailib(void)
+{
+    PyObject *m = Py_InitModule3("_ailib", module_methods, NULL);
+    if (m == NULL) return;
+
+    /* Load `numpy` functionality. */
+    import_array();
+}
+
+////////////////////////////////////////////////////////////
+///	NEURALNETWORK
+////////////////////////////////////////////////////////////
+
+static PyObject *ailib_neuralnetwork_init(PyObject *self, PyObject *args)
+{
+	//Allocate memory
+	ai::NeuralNetwork* net_ptr = new ai::NeuralNetwork();
+	return PyLong_FromUnsignedLong((unsigned long)net_ptr);
+}
+
+static PyObject *ailib_neuralnetwork_init_fromfile(PyObject *self, PyObject *args)
+{
+	//Get arguments
+	const char* filepath;
+	if (!PyArg_ParseTuple(args, "s", &filepath)) return NULL;
+
+	//Allocate memory
+	ai::NeuralNetwork* net_ptr = new ai::NeuralNetwork(std::string(filepath));
+	return PyLong_FromUnsignedLong((unsigned long)net_ptr);
+}
+
+static PyObject *ailib_neuralnetwork_save(PyObject *self, PyObject *args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* filepath;
+	if (!PyArg_ParseTuple(args, "ks", &net_ptr_aslong, &filepath)) return NULL;
+
+	//Save network
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->save(std::string(filepath));
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_load(PyObject *self, PyObject *args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* filepath;
+	if (!PyArg_ParseTuple(args, "ks", &net_ptr_aslong, &filepath)) return NULL;
+
+	//Load network
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->load(std::string(filepath));
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_clear(PyObject *self, PyObject *args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	if (!PyArg_ParseTuple(args, "k", &net_ptr_aslong)) return NULL;
+
+	//Clear network
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->clear();
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_printstack(PyObject *self, PyObject *args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	if (!PyArg_ParseTuple(args, "k", &net_ptr_aslong)) return NULL;
+
+	//Print network structure
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->printstack();
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_variable(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	int width, height, depth;
+	if (!PyArg_ParseTuple(args, "kssiii", &net_ptr_aslong, &node_name, &node_inputs,
+		&width, &height, &depth)) return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Variable::make(width, height, depth));
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_linear(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	int size;
+	unsigned char use_bias;
+	float gradient_clipping, l1_regularization, l2_regularization;
+	if (!PyArg_ParseTuple(args, "kssibfff", &net_ptr_aslong, &node_name, &node_inputs,
+		&size, &use_bias, &gradient_clipping, &l1_regularization, &l2_regularization)) return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Linear::make(size,
+		use_bias, gradient_clipping, l1_regularization, l2_regularization));
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_convolution(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	int filter_width, filter_height, filter_count, stride, padding;
+	float gradient_clipping, l1_regularization, l2_regularization;
+	if (!PyArg_ParseTuple(args, "kssiiiiifff", &net_ptr_aslong, &node_name, &node_inputs,
+		&filter_width, &filter_height, &filter_count, &stride, &padding, &gradient_clipping,
+		&l1_regularization, &l2_regularization))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Convolution::make(
+		ai::Point(filter_width, filter_height), filter_count, stride, padding, gradient_clipping,
+		l1_regularization, l2_regularization));
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_maxpooling(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	int filter_size, stride;
+	if (!PyArg_ParseTuple(args, "kssii", &net_ptr_aslong, &node_name, &node_inputs,
+		&filter_size, &stride))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Maxpooling::make(filter_size, stride));	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_averagepooling(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	int filter_size, padding;
+	if (!PyArg_ParseTuple(args, "kssii", &net_ptr_aslong, &node_name, &node_inputs,
+		&filter_size, &padding))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Averagepooling::make(filter_size, padding));	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_dropout(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	float drop_probability;
+	if (!PyArg_ParseTuple(args, "kssf", &net_ptr_aslong, &node_name, &node_inputs, &drop_probability))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Dropout::make(drop_probability));	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_sigmoid(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	if (!PyArg_ParseTuple(args, "kss", &net_ptr_aslong, &node_name, &node_inputs))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Sigmoid::make());	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_tanh(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	if (!PyArg_ParseTuple(args, "kss", &net_ptr_aslong, &node_name, &node_inputs))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Tanh::make());	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_relu(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	if (!PyArg_ParseTuple(args, "kss", &net_ptr_aslong, &node_name, &node_inputs))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Relu::make());	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_selu(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	if (!PyArg_ParseTuple(args, "kss", &net_ptr_aslong, &node_name, &node_inputs))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Selu::make());	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_softmax(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	float input_scale;
+	if (!PyArg_ParseTuple(args, "kssf", &net_ptr_aslong, &node_name, &node_inputs, &input_scale))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Softmax::make(input_scale));	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_normalization(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	float momentum;
+	if (!PyArg_ParseTuple(args, "kssf", &net_ptr_aslong, &node_name, &node_inputs, &momentum))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Normalization::make(momentum));	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_push_recurrent(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	const char* node_inputs;
+	int size, btt_steps;
+	if (!PyArg_ParseTuple(args, "kssii", &net_ptr_aslong, &node_name, &node_inputs, &size, &btt_steps))
+		return NULL;
+
+	//Push linear operation
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->push(std::string(node_name), std::string(node_inputs), ai::Recurrent::make(size, btt_steps));	
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_run(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	PyObject* input_tensor;
+	unsigned char training;
+	if (!PyArg_ParseTuple(args, "kOb", &net_ptr_aslong, &input_tensor, &training)) return NULL;
+
+  PyObject *input_tensor_np = PyArray_FROM_OTF(input_tensor, NPY_FLOAT, NPY_IN_ARRAY);
+	if (input_tensor_np == NULL) {
+		Py_XDECREF(input_tensor_np);
+		return NULL;
+	}
+
+	//Get tensor dimensions
+	float* data = (float*)PyArray_DATA(input_tensor_np);
+	const npy_intp ndims = (npy_intp)PyArray_NDIM(input_tensor_np);
+  const npy_intp* dims = (npy_intp*)PyArray_DIMS(input_tensor_np);
+	ensure(ndims == 1);
+
+	//Create Tensor
+	ai::Tensor_float input;
+	input.point_raw(data, dims[0], 1, 1);
+	
+	//Feed tensor in the network
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	net_ptr->run(input, (bool)training);
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_neuralnetwork_optimize(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong, optimizer_ptr_aslong;
+	PyObject* input_tensor;
+	PyObject* target_tensor;
+	if (!PyArg_ParseTuple(args, "kOOk", &net_ptr_aslong, &input_tensor, &target_tensor, &optimizer_ptr_aslong)) return NULL;
+	
+  PyObject* input_tensor_np = PyArray_FROM_OTF(input_tensor, NPY_FLOAT, NPY_IN_ARRAY);
+  PyObject* target_tensor_np = PyArray_FROM_OTF(target_tensor, NPY_FLOAT, NPY_IN_ARRAY);
+	if (input_tensor_np == NULL || target_tensor_np == NULL) {	
+		Py_XDECREF(input_tensor_np);
+		Py_XDECREF(target_tensor_np);
+		return NULL;
+	}
+	
+	//Get input tensor dimensions
+	float* input_data = (float*)PyArray_DATA(input_tensor_np);
+	const npy_intp input_ndims = (npy_intp)PyArray_NDIM(input_tensor_np);
+  const npy_intp* input_dims = (npy_intp*)PyArray_DIMS(input_tensor_np);
+	ensure(input_ndims == 1);
+
+	//Create input Tensor
+	ai::Tensor_float input;
+	input.point_raw(input_data, input_dims[0], 1, 1);
+	
+	//Get target tensor dimensions
+	float* target_data = (float*)PyArray_DATA(target_tensor_np);
+	const npy_intp target_ndims = (npy_intp)PyArray_NDIM(target_tensor_np);
+  const npy_intp* target_dims = (npy_intp*)PyArray_DIMS(target_tensor_np);
+	ensure(target_ndims == 1);
+
+	//Create target Tensor
+	ai::Tensor_float target;
+	target.point_raw(target_data, target_dims[0], 1, 1);
+	
+	//Feed tensor in the network
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	ai::Optimizer* opt_ptr = (ai::Optimizer*)optimizer_ptr_aslong;
+	double error = net_ptr->optimize(input, target, opt_ptr);
+	
+	return PyFloat_FromDouble(error);
+}
+
+static PyObject *ailib_neuralnetwork_getoutput(PyObject *self, PyObject* args)
+{
+	//Get arguments
+	unsigned long net_ptr_aslong;
+	const char* node_name;
+	if (!PyArg_ParseTuple(args, "ks", &net_ptr_aslong, &node_name)) return NULL;
+
+	//Get output tensor from node
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	ai::Tensor_float& out = net_ptr->get_output(std::string(node_name));
+	if (&out == NULL) Py_RETURN_NONE;
+
+	//Compute tensor dimensions
+	int dimensions = 1;
+	if (out.height() != 1) dimensions = 2;
+	if (out.depth() != 1) dimensions = 3;
+	std::vector<npy_intp> dims_size(dimensions);
+	dims_size[0] = out.width();
+	if (dimensions >= 2) dims_size[1] = out.height();
+	if (dimensions == 3) dims_size[2] = out.depth();
+	
+	//Create numpy array for the output tensor
+	PyObject* out_np = PyArray_SimpleNewFromData(dimensions, &dims_size[0], NPY_FLOAT, &out[0]);
+
+	return out_np;
+}
+
+static PyObject *ailib_neuralnetwork_free(PyObject *self, PyObject *args)
+{
+	//Get parameters
+	unsigned long net_ptr_aslong;
+	if (!PyArg_ParseTuple(args, "k", &net_ptr_aslong)) return NULL;
+	
+	//Free memory
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+	if (net_ptr != NULL) delete net_ptr;
+	
+	Py_RETURN_NONE;
+}
+
+////////////////////////////////////////////////////////////
+///	OPTIMIZERS
+////////////////////////////////////////////////////////////
+
+static PyObject *ailib_optimizer_sdg_init(PyObject *self, PyObject* args)
+{
+	int batch_size, cost_function;
+	float learningrate, momentum;
+	if (!PyArg_ParseTuple(args, "iffi", &batch_size, &learningrate, &momentum, &cost_function)) return NULL;
+
+	//Allocate memory
+	ai::OptimizerSDG* opt_ptr = new ai::OptimizerSDG(batch_size, learningrate, momentum, (ai::Cost::CostType)cost_function);
+	return PyLong_FromUnsignedLong((unsigned long)opt_ptr);
+}
+
+static PyObject *ailib_optimizer_sdg_free(PyObject *self, PyObject* args)
+{
+	//Get parameters
+	unsigned long opt_ptr_aslong;
+	if (!PyArg_ParseTuple(args, "k", &opt_ptr_aslong)) return NULL;
+	
+	//Free memory
+	ai::OptimizerSDG* opt_ptr = (ai::OptimizerSDG*)opt_ptr_aslong;
+	if (opt_ptr != NULL) delete opt_ptr;
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_optimizer_sdg_set_learningrate(PyObject *self, PyObject* args)
+{
+	//Get parameters
+	unsigned long opt_ptr_aslong;
+	float learningrate;
+	if (!PyArg_ParseTuple(args, "kf", &opt_ptr_aslong, &learningrate)) return NULL;
+	
+	//Free memory
+	ai::OptimizerSDG* opt_ptr = (ai::OptimizerSDG*)opt_ptr_aslong;
+	opt_ptr->setLearningrate(learningrate);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject *ailib_optimizer_sdg_set_momentum(PyObject *self, PyObject* args)
+{
+	//Get parameters
+	unsigned long opt_ptr_aslong;
+	float momentum;
+	if (!PyArg_ParseTuple(args, "kf", &opt_ptr_aslong, &momentum)) return NULL;
+	
+	//Free memory
+	ai::OptimizerSDG* opt_ptr = (ai::OptimizerSDG*)opt_ptr_aslong;
+	opt_ptr->setMomentum(momentum);
+
+	Py_RETURN_NONE;
+}
+
+////////////////////////////////////////////////////////////
+///	DQN AGENT
+////////////////////////////////////////////////////////////
+
+static PyObject* ailib_dqn_init(PyObject* self, PyObject* args)
+{
+	//Get parameters
+	unsigned long net_ptr_aslong;
+	int short_term_memory_size;
+	float learningrate, curiosity, longtermexploitation;
+	if (!PyArg_ParseTuple(args, "kifff", &net_ptr_aslong, &short_term_memory_size, &learningrate, &curiosity, &longtermexploitation)) return NULL;
+	
+	//Computer neuralnetwork pointer
+	ai::NeuralNetwork* net_ptr = (ai::NeuralNetwork*)net_ptr_aslong;
+
+	//Allocate dqn agent
+	ai::DQN *agent_ptr = new ai::DQN(*net_ptr, short_term_memory_size, learningrate, curiosity, longtermexploitation);
+	return PyLong_FromUnsignedLong((unsigned long)agent_ptr);
+}
+
+static PyObject* ailib_dqn_free(PyObject* self, PyObject* args)
+{
+	unsigned long agent_ptr_aslong;
+	if (!PyArg_ParseTuple(args, "k", &agent_ptr_aslong)) return NULL;
+
+	//Free memory
+	ai::DQN *agent_ptr = (ai::DQN*)agent_ptr_aslong;
+	if (agent_ptr != NULL) delete agent_ptr;
+	
+	Py_RETURN_NONE;
+}
+
+static PyObject* ailib_dqn_set_curiosity(PyObject* self, PyObject* args)
+{
+	unsigned long agent_ptr_aslong;
+	float curiosity;
+	if (!PyArg_ParseTuple(args, "kf", &agent_ptr_aslong, &curiosity)) return NULL;
+
+	//Free memory
+	ai::DQN *agent_ptr = (ai::DQN*)agent_ptr_aslong;
+	agent_ptr->setcuriosity(curiosity);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject* ailib_dqn_set_longtermexploitation(PyObject* self, PyObject* args)
+{
+	unsigned long agent_ptr_aslong;
+	float longtermexploitation;
+	if (!PyArg_ParseTuple(args, "kf", &agent_ptr_aslong, &longtermexploitation)) return NULL;
+
+	//Free memory
+	ai::DQN *agent_ptr = (ai::DQN*)agent_ptr_aslong;
+	agent_ptr->setlongtermexploitation(longtermexploitation);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject* ailib_dqn_set_learningrate(PyObject* self, PyObject* args)
+{
+	unsigned long agent_ptr_aslong;
+	float learningrate;
+	if (!PyArg_ParseTuple(args, "kf", &agent_ptr_aslong, &learningrate)) return NULL;
+
+	//Free memory
+	ai::DQN *agent_ptr = (ai::DQN*)agent_ptr_aslong;
+	agent_ptr->setlearningrate(learningrate);
+
+	Py_RETURN_NONE;
+}
+
+static PyObject* ailib_dqn_act(PyObject* self, PyObject* args)
+{
+	unsigned long agent_ptr_aslong;
+	PyObject* state;
+	if (!PyArg_ParseTuple(args, "kO", &agent_ptr_aslong, &state)) return NULL;
+	
+	//Get numpy array of state
+  PyObject* state_np = PyArray_FROM_OTF(state, NPY_FLOAT, NPY_IN_ARRAY);
+	if (state_np == NULL) {	
+		Py_XDECREF(state_np);
+		return NULL;
+	}
+	
+	//Get C array from numpy array
+	float* state_c = (float*)PyArray_DATA(state_np);
+	const npy_intp state_ndims = (npy_intp)PyArray_NDIM(state_np);
+  const npy_intp* state_dims = (npy_intp*)PyArray_DIMS(state_np);
+	ensure(state_ndims == 1);
+	
+	//Create tensor from C array
+	ai::Tensor_float state_tensor;
+	state_tensor.point_raw(state_c, state_dims[0], 1, 1);
+
+	//Act and return action id 
+	ai::DQN *agent_ptr = (ai::DQN*)agent_ptr_aslong;
+	int action = agent_ptr->act(state_tensor);
+	return PyInt_FromLong((long)action);
+}
+
+static PyObject* ailib_dqn_act_restricted(PyObject* self, PyObject* args)
+{
+	/*
+	 TODO
+	unsigned long agent_ptr_aslong;
+	PyObject* state;
+	PyObject* allowed_actions;
+	if (!PyArg_ParseTuple(args, "kOO", &agent_ptr_aslong, &state, &allowed_actions)) return NULL;
+	
+	//Get numpy array of state
+  PyObject* state_np = PyArray_FROM_OTF(state, NPY_FLOAT, NPY_IN_ARRAY);
+  PyObject* allowed_actions_np = PyArray_FROM_OTF(allowed_actions, NPY_BOOL, NPY_IN_ARRAY);
+	if (state_np == NULL || allowed_actions_np == NULL) {	
+		Py_XDECREF(state_np);
+		Py_XDECREF(allowed_actions_np);
+		return NULL;
+	}
+	
+	//Get C array from numpy array
+	float* state_c = (float*)PyArray_DATA(state_np);
+	const npy_intp state_ndims = (npy_intp)PyArray_NDIM(state_np);
+  const npy_intp* state_dims = (npy_intp*)PyArray_DIMS(state_np);
+	ensure(state_ndims == 1);
+	
+	//Create tensor from C array
+	ai::Tensor_float state_tensor;
+	state_tensor.point_raw(state_c, state_dims[0], 1, 1);
+
+	//Act and return action id 
+	ai::DQN *agent_ptr = (ai::DQN*)agent_ptr_aslong;
+	int action = agent_ptr->act(state_tensor)
+	return PyInt_FromLong((long)action);
+	*/
+
+	Py_RETURN_NONE;
+}
+
+static PyObject* ailib_dqn_teach(PyObject* self, PyObject* args)
+{
+	//TODO
+	Py_RETURN_NONE;
+}
+
+static PyObject* ailib_dqn_observe(PyObject* self, PyObject* args)
+{	
+	unsigned long agent_ptr_aslong;
+	PyObject* new_state;
+	float old_reward;
+	if (!PyArg_ParseTuple(args, "kOf", &agent_ptr_aslong, &new_state, &old_reward)) return NULL;
+	
+	//Get numpy array of new_state
+  PyObject* new_state_np = PyArray_FROM_OTF(new_state, NPY_FLOAT, NPY_IN_ARRAY);
+	if (new_state_np == NULL) {	
+		Py_XDECREF(new_state_np);
+		return NULL;
+	}
+	
+	//Get C array from numpy array
+	float* new_state_c = (float*)PyArray_DATA(new_state_np);
+	const npy_intp new_state_ndims = (npy_intp)PyArray_NDIM(new_state_np);
+  const npy_intp* new_state_dims = (npy_intp*)PyArray_DIMS(new_state_np);
+	ensure(new_state_ndims == 1);
+	
+	//Create tensor from C array
+	ai::Tensor_float new_state_tensor;
+	new_state_tensor.point_raw(new_state_c, new_state_dims[0], 1, 1);
+
+	//Observe new state and old reward 
+	ai::DQN *agent_ptr = (ai::DQN*)agent_ptr_aslong;
+	agent_ptr->observe(new_state_tensor, old_reward);
+
+	Py_RETURN_NONE;
+}
+
+

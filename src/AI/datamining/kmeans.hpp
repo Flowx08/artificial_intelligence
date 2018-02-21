@@ -1,0 +1,90 @@
+#ifndef KMEANS_HPP
+#define KMEANS_HPP
+
+////////////////////////////////////////////////////////////
+///	INCLUDES
+////////////////////////////////////////////////////////////
+#include <vector>
+#include <random>
+#include <math.h>
+
+////////////////////////////////////////////////////////////
+///	NAMESPACE AI
+////////////////////////////////////////////////////////////
+namespace ai 
+{
+
+	//Shortcuts
+	typedef std::vector<double> vec;
+	typedef std::vector< vec > vec2;
+
+	////////////////////////////////////////////////////////////
+	/// \brief	K-means clustering is a method of vector
+	/// quantization, originally from signal processing,
+	/// that is popular for cluster analysis in data mining.
+	/// k-means clustering aims to partition n observations
+	/// into k clusters in which each observation belongs to
+	/// the cluster with the nearest mean, serving as a 
+	/// prototype of the cluster	
+	///
+	////////////////////////////////////////////////////////////
+	class kmeans
+	{
+		public:
+			////////////////////////////////////////////////////////////
+			/// \brief	Construct kmeans model by passing the number of
+			/// clusters k, the number of dimensions of the datavecs
+			/// and the centroid initialization mean and deviation
+			///
+			////////////////////////////////////////////////////////////
+			kmeans(int k, int dimensions, float init_mean = 0.0, float init_dev = 1.0);
+
+			////////////////////////////////////////////////////////////
+			/// \brief	Fit datavecs into k-clusters	
+			///
+			////////////////////////////////////////////////////////////
+			void fit(const std::vector< vec > &data, int max_iterations);
+
+			////////////////////////////////////////////////////////////
+			/// \brief	Fit datavecs into k-clusters with continuous
+			/// datavecs stream
+			///
+			////////////////////////////////////////////////////////////
+			void fit_continuous(const std::vector< vec > &data, float learningrate, int iterations);
+
+			////////////////////////////////////////////////////////////
+			/// \brief	Get number of iterations used for fitting
+			/// the datavecs into k-clusters
+			///
+			////////////////////////////////////////////////////////////
+			int getiterations();
+
+			////////////////////////////////////////////////////////////
+			/// \brief	Get cluster id from datavec	
+			///
+			////////////////////////////////////////////////////////////
+			int getcluster(const vec &data);
+
+			////////////////////////////////////////////////////////////
+			/// \brief	Get centroinds position	
+			///
+			////////////////////////////////////////////////////////////
+			const std::vector< vec > &getcentroids();
+			
+			////////////////////////////////////////////////////////////
+			/// \brief	Set centroind position	
+			///
+			////////////////////////////////////////////////////////////
+			void setcentroid(int id, const vec& centroid);
+
+		private:
+			int _k, _dimensions;
+			float _init_mean, _init_dev;
+			int _fit_iterations;
+			std::vector< vec > _centroids;
+	};
+
+} //namespace ai
+
+#endif /* end of include guard: KMEANS_HPP */
+

@@ -1,0 +1,478 @@
+#include <Python.h>
+#include <numpy/arrayobject.h>
+#include "CPU_backend.hpp"
+#include <stdio.h>
+
+static PyObject *deepai_cpu_linear_foreward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_linear_backward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_linear_accumulate_deltas(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_linear_update_parameters(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_sigmoid_foreward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_sigmoid_backward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_relu_foreward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_relu_backward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_tanh_foreward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_tanh_backward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_selu_foreward(PyObject *self, PyObject *args);
+static PyObject *deepai_cpu_selu_backward(PyObject *self, PyObject *args);
+
+static PyMethodDef module_methods[] = {
+    {"cpu_linear_foreward", deepai_cpu_linear_foreward, METH_VARARGS, NULL},
+    {"cpu_linear_backward", deepai_cpu_linear_backward, METH_VARARGS, NULL},
+    {"cpu_linear_accumulate_deltas", deepai_cpu_linear_accumulate_deltas, METH_VARARGS, NULL},
+    {"cpu_linear_update_parameters", deepai_cpu_linear_update_parameters, METH_VARARGS, NULL},
+    {"cpu_sigmoid_foreward", deepai_cpu_sigmoid_foreward, METH_VARARGS, NULL},
+    {"cpu_sigmoid_backward", deepai_cpu_sigmoid_backward, METH_VARARGS, NULL},
+    {"cpu_relu_foreward", deepai_cpu_relu_foreward, METH_VARARGS, NULL},
+    {"cpu_relu_backward", deepai_cpu_relu_backward, METH_VARARGS, NULL},
+    {"cpu_tanh_foreward", deepai_cpu_tanh_foreward, METH_VARARGS, NULL},
+    {"cpu_tanh_backward", deepai_cpu_tanh_backward, METH_VARARGS, NULL},
+    {"cpu_selu_foreward", deepai_cpu_selu_foreward, METH_VARARGS, NULL},
+    {"cpu_selu_backward", deepai_cpu_selu_backward, METH_VARARGS, NULL},
+    {NULL, NULL, 0, NULL}
+};
+
+PyMODINIT_FUNC initdeepai(void)
+{
+    PyObject *m = Py_InitModule3("deepai", module_methods, NULL);
+    if (m == NULL) return;
+
+    /* Load `numpy` functionality. */
+    import_array();
+}
+
+static PyObject *deepai_cpu_linear_foreward(PyObject *self, PyObject *args)
+{
+    int input_size, output_size;
+		char use_bias, accumulate;
+    PyObject *weights, *bias, *inputs, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOOOiibb", &weights, &bias, &inputs, &outputs,
+				&input_size, &output_size, &use_bias, &accumulate))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *weights_np = PyArray_FROM_OTF(weights, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *bias_np = PyArray_FROM_OTF(bias, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *inputs_np = PyArray_FROM_OTF(inputs, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (weights_np == NULL || bias_np == NULL || inputs_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(weights_np);
+        Py_XDECREF(bias_np);
+        Py_XDECREF(inputs_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *weights_c    = (float*)PyArray_DATA(weights_np);
+		float *bias_c    = (float*)PyArray_DATA(bias_np);
+		float *inputs_c = (float*)PyArray_DATA(inputs_np);
+		float *outputs_c = (float*)PyArray_DATA(outputs_np);
+
+    ai::linear_foreward(weights_c, bias_c, inputs_c, outputs_c, input_size, output_size, (bool)use_bias, (bool)accumulate);
+
+    /* Clean up. */
+    Py_DECREF(weights_np);
+    Py_DECREF(bias_np);
+    Py_DECREF(inputs_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_linear_backward(PyObject *self, PyObject *args)
+{
+    int input_size, output_size;
+    PyObject *weights, *out_errors, *errors;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOOii", &weights, &out_errors, &errors, &input_size, &output_size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *weights_np = PyArray_FROM_OTF(weights, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *out_errors_np = PyArray_FROM_OTF(out_errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *errors_np = PyArray_FROM_OTF(errors, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (weights_np == NULL || out_errors_np == NULL || errors_np == NULL) {
+        Py_XDECREF(weights_np);
+        Py_XDECREF(out_errors_np);
+        Py_XDECREF(errors_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *weights_c    = (float*)PyArray_DATA(weights_np);
+		float *out_errors_c    = (float*)PyArray_DATA(out_errors_np);
+		float *errors_c = (float*)PyArray_DATA(errors_np);
+
+    ai::linear_backward(weights_c, out_errors_c, errors_c, input_size, output_size);
+
+    /* Clean up. */
+    Py_DECREF(weights_np);
+    Py_DECREF(out_errors_np);
+    Py_DECREF(errors_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_linear_accumulate_deltas(PyObject *self, PyObject *args)
+{
+    int input_size, output_size;
+		char use_bias;
+    PyObject *deltas, *errors, *inputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOOiib", &deltas, &inputs, &errors, &input_size, &output_size, &use_bias))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *deltas_np = PyArray_FROM_OTF(deltas, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *errors_np = PyArray_FROM_OTF(errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *inputs_np = PyArray_FROM_OTF(inputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (deltas_np == NULL || errors_np == NULL || inputs_np == NULL) {
+        Py_XDECREF(deltas_np);
+        Py_XDECREF(errors_np);
+        Py_XDECREF(inputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *deltas_c    = (float*)PyArray_DATA(deltas_np);
+		float *errors_c    = (float*)PyArray_DATA(errors_np);
+		float *inputs_c = (float*)PyArray_DATA(inputs_np);
+
+    ai::linear_accumulate_deltas(deltas_c, inputs_c, errors_c,input_size, output_size, (bool)use_bias);
+
+    /* Clean up. */
+    Py_DECREF(deltas_np);
+    Py_DECREF(errors_np);
+    Py_DECREF(inputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_linear_update_parameters(PyObject *self, PyObject *args)
+{
+    int input_size, output_size;
+    float learningrate;
+		PyObject *deltas, *weights, *bias;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOOfii", &deltas, &weights, &bias, &learningrate, &input_size, &output_size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *deltas_np = PyArray_FROM_OTF(deltas, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *weights_np = PyArray_FROM_OTF(weights, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *bias_np = PyArray_FROM_OTF(bias, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (deltas_np == NULL || weights_np == NULL || bias_np == NULL) {
+        Py_XDECREF(deltas_np);
+        Py_XDECREF(weights_np);
+        Py_XDECREF(bias_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *deltas_c    = (float*)PyArray_DATA(deltas_np);
+		float *weights_c    = (float*)PyArray_DATA(weights_np);
+		float *bias_c = (float*)PyArray_DATA(bias_np);
+
+    ai::linear_update_parameters(deltas_c, weights_c, bias_c, learningrate, input_size, output_size);
+
+    /* Clean up. */
+    Py_DECREF(deltas_np);
+    Py_DECREF(weights_np);
+    Py_DECREF(bias_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_sigmoid_foreward(PyObject *self, PyObject *args)
+{
+    int size;
+		PyObject *inputs, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOi", &inputs, &outputs, &size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *inputs_np = PyArray_FROM_OTF(inputs, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (inputs_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(inputs_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *inputs_c    = (float*)PyArray_DATA(inputs_np);
+		float *outputs_c    = (float*)PyArray_DATA(outputs_np);
+
+    ai::sigmoid_foreward(inputs_c, outputs_c, size);
+
+    /* Clean up. */
+    Py_DECREF(inputs_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_sigmoid_backward(PyObject *self, PyObject *args)
+{
+    int size;
+		PyObject *errors, *out_errors, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOOi", &errors, &out_errors, &outputs, &size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *errors_np = PyArray_FROM_OTF(errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *out_errors_np = PyArray_FROM_OTF(out_errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (errors_np == NULL || out_errors_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(errors_np);
+        Py_XDECREF(out_errors_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *errors_c    = (float*)PyArray_DATA(errors_np);
+		float *out_errors_c    = (float*)PyArray_DATA(out_errors_np);
+		float *outputs_c = (float*)PyArray_DATA(outputs_np);
+
+    ai::sigmoid_backward(errors_c, out_errors_c, outputs_c, size);
+
+    /* Clean up. */
+    Py_DECREF(errors_np);
+    Py_DECREF(out_errors_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_relu_foreward(PyObject *self, PyObject *args)
+{
+    int size;
+		PyObject *inputs, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOi", &inputs, &outputs, &size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *inputs_np = PyArray_FROM_OTF(inputs, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (inputs_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(inputs_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *inputs_c    = (float*)PyArray_DATA(inputs_np);
+		float *outputs_c    = (float*)PyArray_DATA(outputs_np);
+
+    ai::relu_foreward(inputs_c, outputs_c, size);
+
+    /* Clean up. */
+    Py_DECREF(inputs_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_relu_backward(PyObject *self, PyObject *args)
+{
+    int size;
+		PyObject *errors, *out_errors, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOOi", &errors, &out_errors, &outputs, &size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *errors_np = PyArray_FROM_OTF(errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *out_errors_np = PyArray_FROM_OTF(out_errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (errors_np == NULL || out_errors_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(errors_np);
+        Py_XDECREF(out_errors_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *errors_c    = (float*)PyArray_DATA(errors_np);
+		float *out_errors_c    = (float*)PyArray_DATA(out_errors_np);
+		float *outputs_c = (float*)PyArray_DATA(outputs_np);
+
+    ai::relu_backward(errors_c, out_errors_c, outputs_c, size);
+
+    /* Clean up. */
+    Py_DECREF(errors_np);
+    Py_DECREF(out_errors_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_tanh_foreward(PyObject *self, PyObject *args)
+{
+    int size;
+		PyObject *inputs, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOi", &inputs, &outputs, &size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *inputs_np = PyArray_FROM_OTF(inputs, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (inputs_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(inputs_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *inputs_c    = (float*)PyArray_DATA(inputs_np);
+		float *outputs_c    = (float*)PyArray_DATA(outputs_np);
+
+    ai::tanh_foreward(inputs_c, outputs_c, size);
+
+    /* Clean up. */
+    Py_DECREF(inputs_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_tanh_backward(PyObject *self, PyObject *args)
+{
+    int size;
+		PyObject *errors, *out_errors, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOOi", &errors, &out_errors, &outputs, &size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *errors_np = PyArray_FROM_OTF(errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *out_errors_np = PyArray_FROM_OTF(out_errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (errors_np == NULL || out_errors_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(errors_np);
+        Py_XDECREF(out_errors_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *errors_c    = (float*)PyArray_DATA(errors_np);
+		float *out_errors_c    = (float*)PyArray_DATA(out_errors_np);
+		float *outputs_c = (float*)PyArray_DATA(outputs_np);
+
+    ai::tanh_backward(errors_c, out_errors_c, outputs_c, size);
+
+    /* Clean up. */
+    Py_DECREF(errors_np);
+    Py_DECREF(out_errors_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_selu_foreward(PyObject *self, PyObject *args)
+{
+    int size;
+		PyObject *inputs, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOi", &inputs, &outputs, &size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *inputs_np = PyArray_FROM_OTF(inputs, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (inputs_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(inputs_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *inputs_c    = (float*)PyArray_DATA(inputs_np);
+		float *outputs_c    = (float*)PyArray_DATA(outputs_np);
+
+    ai::selu_foreward(inputs_c, outputs_c, size);
+
+    /* Clean up. */
+    Py_DECREF(inputs_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}
+
+static PyObject *deepai_cpu_selu_backward(PyObject *self, PyObject *args)
+{
+    int size;
+		PyObject *errors, *out_errors, *outputs;
+		
+    /* Parse the input tuple */
+    if (!PyArg_ParseTuple(args, "OOOi", &errors, &out_errors, &outputs, &size))
+        return NULL;
+
+    /* Interpret the input objects as numpy arrays. */
+    PyObject *errors_np = PyArray_FROM_OTF(errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *out_errors_np = PyArray_FROM_OTF(out_errors, NPY_FLOAT, NPY_IN_ARRAY);
+    PyObject *outputs_np = PyArray_FROM_OTF(outputs, NPY_FLOAT, NPY_IN_ARRAY);
+		
+    /* If that didn't work, throw an exception. */
+    if (errors_np == NULL || out_errors_np == NULL || outputs_np == NULL) {
+        Py_XDECREF(errors_np);
+        Py_XDECREF(out_errors_np);
+        Py_XDECREF(outputs_np);
+        return NULL;
+    }
+		
+    /* Get pointers to the data as C-types. */
+		float *errors_c    = (float*)PyArray_DATA(errors_np);
+		float *out_errors_c    = (float*)PyArray_DATA(out_errors_np);
+		float *outputs_c = (float*)PyArray_DATA(outputs_np);
+
+    ai::selu_backward(errors_c, out_errors_c, outputs_c, size);
+
+    /* Clean up. */
+    Py_DECREF(errors_np);
+    Py_DECREF(out_errors_np);
+    Py_DECREF(outputs_np);
+
+		Py_RETURN_NONE;
+}

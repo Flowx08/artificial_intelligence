@@ -1,0 +1,1 @@
+sudo nvcc -std=c++11 -O3 -D_FORCE_INLINES -lcudnn -lcublas CIFAR10_cuda.cpp ../src/AI/deeplearning/*.cpp ../src/AI/util/*.cpp ../src/AI/util/*.cu ../src/AI/deeplearning/*.cu ../src/AI/visualization/*.cpp -o CIFAR10
