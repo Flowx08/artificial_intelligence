@@ -10,8 +10,7 @@
 #include "../util/Point.hpp"
 
 ////////////////////////////////////////////////////////////
-///	NAMESPACE AI
-////////////////////////////////////////////////////////////
+///	NAMESPACE AI /////////////////////////////////////////////////////////
 namespace ai
 {
 	class Convolution : public Operation
@@ -90,7 +89,7 @@ namespace ai
 			float _gradient_clipping;
 			float _l1_regularization;
 			float _l2_regularization;
-			std::vector<std::vector< int >> _convmap;
+			std::vector<std::vector< int > > _convmap;
 	};
 
 } /* namespace ai */

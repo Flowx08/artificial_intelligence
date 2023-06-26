@@ -1,12 +1,10 @@
 #include "../../src/AI/deeplearning/NeuralNetwork.hpp"
 #include "../../src/AI/deeplearning/ResidualBlock.hpp"
 #include "../../src/AI/deeplearning/Autoencoder.hpp"
-#include "../../src/AI/deeplearning/LadderNetwork_MLP.hpp"
 #include "../../src/AI/deeplearning/CPU_backend.hpp"
 #include "../../src/AI/deeplearning/DataAugmentation.hpp"
 #include "../../src/AI/deeplearning/OptimizerSDG.hpp"
 #include "../../src/AI/deeplearning/OptimizerDFA.hpp"
-#include "../../src/AI/deeplearning/MLP.hpp"
 #include "../../src/AI/visualization/Bitmap.hpp"
 #include "../../src/AI/visualization/visualization.hpp"
 #include "../../src/AI/util/Util.hpp"
@@ -95,8 +93,8 @@ int main(int argc, const char *argv[])
 	gg.push("LIN2",		"REL1",		ai::Linear::make(100));
 	gg.push("REL2",		"LIN2",			ai::Relu::make());
 	gg.push("LIN3",		"REL2",			ai::Linear::make(10));
-	gg.push("OUTPUT",		"LIN3",			ai::Sigmoid::make());
-	//gg.push("OUTPUT",		"ACT",			ai::Softmax::make());
+	// gg.push("OUTPUT",		"LIN3",			ai::Sigmoid::make());
+	gg.push("OUTPUT",		"LIN3",			ai::Softmax::make());
 
 
 	/*
@@ -120,14 +118,14 @@ int main(int argc, const char *argv[])
   ai::Tensor_float trainingset, training_targets, testingset, testing_targets;
 	//ai::loadMNIST("/home/flowx08/mnist_png", trainingset, training_targets, testingset, testing_targets);
   ai::loadMNIST_from_binary(
-		"/home/flowx08/mnist_binary/train-images-idx3-ubyte",
-		"/home/flowx08/mnist_binary/t10k-images-idx3-ubyte",
-		"/home/flowx08/mnist_binary/train-labels-idx1-ubyte",
-		"/home/flowx08/mnist_binary/t10k-labels-idx1-ubyte",
+		"/Users/Shared/datasets/mnist/train-images-idx3-ubyte",
+		"/Users/Shared/datasets/mnist/t10k-images-idx3-ubyte",
+		"/Users/Shared/datasets/mnist/train-labels-idx1-ubyte",
+		"/Users/Shared/datasets/mnist/t10k-labels-idx1-ubyte",
 		trainingset, training_targets, testingset, testing_targets);
 
 	//Create optimizer
-	ai::OptimizerSDG opt(1, 0.004, 0.5, ai::Cost::SquaredError);
+	ai::OptimizerSDG opt(1, 0.004, 0.5, ai::Cost::CrossEntropy);
 	
 	//ai::LadderNetwork_MLP ladder(28 * 28, (std::vector<unsigned int>){256, 32});
 	//ladder.print_structure();
@@ -135,7 +133,7 @@ int main(int argc, const char *argv[])
 	//TRAINING
 	double error = 0;
 	const int cicles = 100000;
-	const int restarts = 1;
+	const int restarts = 3;
 	int best = 200;
 	ai::Tensor_float boosting(100);
 	boosting.fill(1);
@@ -160,15 +158,10 @@ int main(int argc, const char *argv[])
 			input.copy(trainingset.ptr(0, random_sample_id));
 			
 			//Data augmentation
-			//ai::augmentation::rotate(input, 28, 28, 1, -25 + rand() % (25 * 2));
-			//ai::augmentation::translate(input, 28, 28, 1, -5 + rand() % 10, -5 + rand() % 10);
-			//ai::augmentation::noise(input, 28, 28, 1, ai::util::randf() * 0.10);
+			// ai::augmentation::rotate(input, 28, 28, 1, -25 + rand() % (25 * 2));
+			// ai::augmentation::translate(input, 28, 28, 1, -5 + rand() % 10, -5 + rand() % 10);
+			// ai::augmentation::noise(input, 28, 28, 1, ai::util::randf() * 0.10);
 			
-			//Optimize deep neural network
-			//error += gg.optimize(input, training_targets.ptr(0, random_sample_id), &opt);
-			//ladder.learn_supervised(input, training_targets.ptr(0, random_sample_id), 0.007);
-			//ladder.learn_unsupervised(input, opt.getLearningrate());
-				
 			//int random_sample_id = (rand() % (trainingset.height() / 120)) * 120;
 			//input.copy(trainingset.ptr(0, random_sample_id));
 			error += gg.optimize(input, training_targets.ptr(0, random_sample_id), &opt);
