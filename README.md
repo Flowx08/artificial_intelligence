@@ -36,7 +36,7 @@ Deep Reinforcement Learning environments
 
 Optimization algorithms
 -------------
-1. Genetic algorithms (with multicore features for high performance)
+1. Genetic algorithms (with multi-core and multi-nodes features for high performance)
 2. Particle Swarm Optimization
 
 Other machine learning algorithms
@@ -58,7 +58,7 @@ License
 ======
 The MIT License (MIT)
 
-Copyright (c) 2015 Carlo Meroni
+Copyright (c) 2023 Carlo Meroni
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -77,3 +77,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
