@@ -44,6 +44,7 @@ GeneticAlgorithm::GeneticAlgorithm() {
   migrationInterval = 5;
   selectionProbability = 1.0;
   migrationMode = GeneticAlgorithm::ELITIST;
+  stopConditionType = GeneticAlgorithm::ITERATIONS;
   migrationSize = 1;
 }
 

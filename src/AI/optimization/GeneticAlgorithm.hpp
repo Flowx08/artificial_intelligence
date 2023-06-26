@@ -67,6 +67,7 @@ class GeneticAlgorithm {
   virtual unsigned int roundSchedule(const float time);
   virtual float mutationSchedule(const float time);
   virtual unsigned int getSolutionSize();
+
   void setMigrationMode(MigrationMode mode);
   void setMigrationSize(const unsigned int size);
   void setSelectionProbability(const float p);
